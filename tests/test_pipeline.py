@@ -397,3 +397,30 @@ def test_link_sandbox_unavailable_means_no_browsing_on_the_host(cfg, store):
     assert not ok
     with pytest.raises(SandboxUnavailable):
         sb.browse("http://a.example/")
+
+
+# ------------------------------------------------------------------ command line
+def test_cli_init_doctor_and_build_images_degrade_cleanly_without_docker(tmp_path, monkeypatch, capsys):
+    from phishguard import cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PHISHGUARD_HOME", str(tmp_path / "home"))
+    monkeypatch.setattr("shutil.which", lambda name, *a, **k: None)
+    assert cli.main(["init"]) == 0 and (tmp_path / "config.toml").exists()
+    assert cli.main(["init"]) == 1                                   # never overwrites an existing config
+    assert cli.main(["doctor"]) == 0 and "UNAVAILABLE" in capsys.readouterr().out
+    assert cli.main(["build-images"]) == 1 and "Install Docker" in capsys.readouterr().out
+
+
+def test_cli_check_reports_verdict_exit_codes_and_json(tmp_path, monkeypatch, capsys):
+    from phishguard import cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PHISHGUARD_HOME", str(tmp_path / "home"))
+    eml = tmp_path / "bad.eml"
+    eml.write_bytes(PHISH_EML)
+    cli.main(["check", str(eml), "--offline", "--no-sandbox", "--json"])
+    d = json.loads(capsys.readouterr().out)
+    assert d["label"] == "phishing" and d["score"] >= 70 and d["signals"] and "http://" not in json.dumps(d["urls"])
+    cli.main(["check", "hello, lunch tomorrow?", "--offline", "--no-sandbox"])
+    assert "SAFE" in capsys.readouterr().out.upper()

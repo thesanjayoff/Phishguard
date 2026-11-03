@@ -220,3 +220,27 @@ def test_display_name_brand_spoof_but_not_for_the_real_brand(ctx):
     assert any("display" in i or "brand" in i for i in ids_of(headers_layer.analyze(spoof, ctx)[0]))
     assert not any("display" in i or "brand" in i for i in ids_of(headers_layer.analyze(real, ctx)[0]))
     assert headers_layer.display_name_typo("HDFC Bank", ctx) is None   # a real brand name is not a typo of a similar brand
+
+
+# ------------------------------------------------------------------ shipped example config
+def test_example_config_loads_and_matches_the_safe_defaults(tmp_path):
+    import dataclasses
+    from pathlib import Path
+
+    from phishguard.config import Config, load_config
+
+    example = Path(__file__).resolve().parents[1] / "config.example.toml"
+    cfg = load_config(example)              # raises on any unknown key or wrong type
+    assert dataclasses.asdict(cfg) == dataclasses.asdict(Config())      # the example documents the real defaults, no drift
+    assert cfg.llm.enabled is False and cfg.privacy.send_body_to_llm is False
+    assert cfg.gmail.quarantine is False and cfg.imap.quarantine is False and cfg.outlook.quarantine is False
+    assert cfg.server.host == "127.0.0.1"
+
+
+def test_unknown_config_keys_are_rejected(tmp_path):
+    from phishguard.config import load_config
+
+    bad = tmp_path / "c.toml"
+    bad.write_text("[privacy]\nsend_body_to_lmm = true\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_config(bad)

@@ -90,7 +90,9 @@ def cmd_check(args, cfg: Config) -> int:
     scanner = Scanner(analyzer)
     res = scanner.scan(msg, persist=args.save, deep=containers)
     if args.json:
-        print(json.dumps(res.verdict.to_dict(), indent=2, default=str))
+        from .present import public_verdict
+
+        print(json.dumps(public_verdict(res.verdict.to_dict()), indent=2, default=str))   # links are defanged here too
     else:
         print(render(res.verdict, color=sys.stdout.isatty() and not os.environ.get("NO_COLOR"), verbose=args.verbose))
     return {"safe": 0, "suspicious": 1, "phishing": 2}[res.verdict.label]
@@ -203,8 +205,13 @@ def cmd_doctor(args, cfg: Config) -> int:
 
 
 def cmd_build_images(args, cfg: Config) -> int:
+    import shutil
     import subprocess
 
+    if shutil.which(cfg.sandbox.docker_bin) is None:
+        print(f"'{cfg.sandbox.docker_bin}' was not found on PATH. Install Docker (Docker Desktop on Windows/macOS, Docker Engine on Linux), "
+              "then run this again. Until then links and attachments are not opened or analysed at all (there is no host fallback).")
+        return 1
     root = Path(__file__).resolve().parents[2]
     rc = 0
     for name, ctx, tag in (("link", "docker/linkbox", cfg.sandbox.link_image), ("attachment", "docker/rebox", cfg.sandbox.re_image)):

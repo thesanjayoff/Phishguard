@@ -1,0 +1,91 @@
+# PhishGuard configuration. Copy to config.toml (or run: phishguard init). Every value shown is the default;
+# delete anything you don't want to change. Unknown keys are rejected so typos don't silently do nothing.
+
+[general]
+data_dir = "data"            # database, feeds, trained model, screenshots, token. Override with $PHISHGUARD_HOME.
+log_level = "INFO"           # logs are redacted (emails, phone numbers, codes, tokens are masked)
+
+[server]
+host = "127.0.0.1"           # keep loopback unless you need your phone on the same Wi-Fi (then see allowed_hosts)
+port = 8765
+token = ""                   # empty = a random token is created in data/token on first run
+allowed_hosts = []           # extra Host names accepted (DNS-rebinding guard). For phone access on your LAN:
+                             #   host = "0.0.0.0"  and  allowed_hosts = ["192.168.1.20", "mypc.local"]
+                             # Off loopback, the web UI asks for the token (/login); a firewall is still wise.
+scan_interval_minutes = 5    # how often enabled mailboxes are polled while the server runs
+
+[privacy]
+store_snippet = true         # keep a short REDACTED preview for the inbox list
+snippet_chars = 160
+external_domain_lookups = true   # RDAP domain-age lookups (sends the domain name only, never message text)
+send_body_to_llm = false     # a message body leaves this machine ONLY if this AND llm.enabled are both true
+
+[thresholds]
+suspicious = 35              # score >= this  -> "suspicious"
+phishing = 70                # score >= this  -> "phishing" (and quarantined; never deleted)
+
+[intel]
+use_openphish = true         # public feed, mirrored locally; lookups never leave your machine
+use_phishtank = true         # public feed, mirrored locally (an app key is optional and only raises the rate limit)
+phishtank_app_key = ""
+safe_browsing_key = ""       # your own Google Safe Browsing key; empty = disabled. URLs (not bodies) are sent to Google.
+feed_refresh_hours = 12
+rdap = true                  # needs external_domain_lookups = true as well
+
+[sandbox]                    # isolated Docker containers: the ONLY place links are opened
+enabled = true
+docker_bin = "docker"
+link_image = "phishguard-linkbox:latest"   # build with: phishguard build-images
+re_image = "phishguard-rebox:latest"
+link_network = ""            # optional dedicated Docker network for the browser container (see README, "Network isolation")
+max_urls_per_message = 3
+browse_min_score = 20        # only open links when the other layers already find something off
+timeout_s = 60
+expand_shorteners = true     # follow bit.ly-style links by reading redirect headers only (inside the container)
+
+[attachments]                # static analysis inside a container with NO network. Nothing is ever executed.
+enabled = true
+adapter = "builtin"          # "builtin" = the bundled analyser, "command" = drive your own tool (see README)
+external_command = []        # for adapter = "command", e.g. ["mytool", "--headless", "--json", "{input}"]
+max_bytes = 26214400
+timeout_s = 90
+
+[llm]                        # optional second opinion. OFF by default.
+enabled = false
+provider = "anthropic"       # or "openai_compatible" with a local server such as Ollama (nothing leaves your machine)
+model = "claude-opus-5-5"
+api_key_env = "ANTHROPIC_API_KEY"
+base_url = ""
+max_chars = 3000
+weight = 0.9
+
+[gmail]                      # Gmail API, read-only scope by default (see README for the OAuth client setup)
+enabled = false
+credentials_file = "gmail_client_secret.json"
+query = "in:inbox newer_than:7d"
+max_per_run = 50
+quarantine = false           # true needs the broader gmail.modify scope so a label can be added; never deletes
+quarantine_label = "PhishGuard-Quarantine"
+
+[imap]                       # any other mailbox; read-only SELECT + BODY.PEEK, so mail is not marked as read
+enabled = false
+host = ""
+port = 993
+user = ""
+password_env = "PHISHGUARD_IMAP_PASSWORD"   # name of the environment variable holding an app password
+folder = "INBOX"
+max_per_run = 50
+since_days = 7
+quarantine = false           # true moves suspected phishing to a folder (copy + never expunge/delete)
+quarantine_folder = "PhishGuard-Quarantine"
+
+[outlook]                    # Microsoft Graph. Optional: leave disabled if you don't use Outlook.
+enabled = false
+client_id = ""
+tenant = "common"
+max_per_run = 50
+quarantine = false           # true needs Mail.ReadWrite so a message can be moved; never deletes
+quarantine_folder = "PhishGuard-Quarantine"
+
+[sms]
+enabled = true               # accept SMS from the Android companion at /api/ingest/sms (bearer token required)

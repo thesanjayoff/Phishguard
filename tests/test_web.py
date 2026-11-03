@@ -1,6 +1,8 @@
 """Web app: auth, host/origin guards, safe rendering, feedback loop, no delete endpoints."""
 from __future__ import annotations
 
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -224,3 +226,22 @@ def test_attachment_report_renders_behaviours_snippets_and_defanged_iocs(cfg, an
     assert "Behaviours found" in page and "URLDownloadToFileA" in page          # the code behind the flag is shown
     assert "Entropy" in page and "Indicators of compromise" in page
     assert "http://example.invalid" not in page and "hxxp://example[.]invalid" in page  # IOCs are defanged
+
+
+def test_api_responses_never_contain_a_clickable_link_anywhere(cfg, analyzer):
+    """Not just verdict.urls: attachment IOCs, signal evidence, notes - every string is defanged in the JSON the API returns."""
+    import json as _json
+
+    import fixtures as F
+
+    analyzer.re_adapter = _LibraryAdapter()
+    app = create_app(cfg, analyzer=analyzer, start_poller=False)
+    c = TestClient(app, base_url="http://127.0.0.1:8765")
+    h = {"X-PG-CSRF": app.state.csrf}
+    eml = _mail_with_attachment("invoice.docm", F.build_docx(vba_modules={"Module1": F.INERT_VBA}))
+    r = c.post("/api/check", json={"text": eml, "kind": "email", "deep": True}, headers=h)
+    blob = _json.dumps(r.json())
+    assert "http://example.invalid" not in blob and "hxxp://example[.]invalid" in blob
+    assert not re.search(r"(?i)\bhttps?://", blob), re.findall(r"(?i)\bhttps?://\S{0,40}", blob)[:3]
+    detail = c.get(f"/api/messages/{r.json()['message_id']}", headers=h)
+    assert not re.search(r"(?i)\bhttps?://", _json.dumps(detail.json()))

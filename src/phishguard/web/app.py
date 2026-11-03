@@ -34,6 +34,7 @@ from ..feedback import apply_feedback, rescore_all
 from ..models import Message
 from ..parsing.email_parser import from_sms, from_text
 from ..pipeline import Analyzer
+from ..present import public_verdict
 from ..service import Scanner
 from ..sources import SOURCE_NAMES, poll_sources
 from ..urlutil import defang, defang_text
@@ -90,14 +91,6 @@ def _msg_dict(row) -> dict[str, Any]:
     d["effective"] = d.get("user_label") or d.get("label")
     d["when"] = _fmt_ts(d.get("scanned_at"))
     return d
-
-
-def public_verdict(v: dict[str, Any]) -> dict[str, Any]:
-    """Verdict for API clients: link targets are only ever given defanged."""
-    out = dict(v)
-    out["urls"] = [{k: i.get(k) for k in ("defanged", "defanged_final", "flags", "final_flags", "brands", "official_brand",
-                                           "shortener", "age_days", "points")} for i in v.get("urls", [])]
-    return out
 
 
 def build_message(text: str, kind: str, sender: str, source: str) -> Message:

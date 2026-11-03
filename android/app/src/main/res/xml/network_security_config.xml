@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Your PhishGuard server speaks plain HTTP on your own network. Android cannot allow cleartext for an IP range,
+     so cleartext is allowed here and the app itself refuses any non-HTTPS server that is not a private/LAN/loopback
+     address (see ServerConfig.isAllowedServer). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
