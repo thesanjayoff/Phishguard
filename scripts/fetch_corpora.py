@@ -2,6 +2,9 @@
 
 * Nazario phishing corpus  (CC-BY-4.0, Jose Nazario, https://monkey.org/~jose/phishing/)
 * Apache SpamAssassin public corpus - ham only  (https://spamassassin.apache.org/old/publiccorpus/)
+* OpenPhish community feed (live phishing URLs, used only for the URL-only evaluation; https://openphish.com/)
+  PhishTank's bulk file needs an application key and answers 429 without one, so it is not fetched here;
+  put your own download at data/corpora/feeds/phishtank.csv if you have it (not read by the evaluation yet).
 
 Messages are only parsed as text. Nothing is opened, rendered or executed.
 """
@@ -61,6 +64,15 @@ def main() -> int:
                     safe_extract(t, outdir)
         except Exception as e:
             print("  skip", f, e)
+    (ROOT / "feeds").mkdir(parents=True, exist_ok=True)
+    try:
+        feed = ROOT / "feeds" / "openphish.txt"
+        r = requests.get("https://openphish.com/feed.txt", timeout=60, allow_redirects=True, headers={"User-Agent": "phishguard-corpus-fetch/0.1"})
+        r.raise_for_status()
+        feed.write_bytes(r.content)  # always refreshed: it is a live list
+        print("openphish URLs:", len(r.text.splitlines()))
+    except Exception as e:
+        print("  skip openphish feed", e)
     (ROOT / "ATTRIBUTION.txt").write_text(
         "Nazario phishing corpus: Jose Nazario, https://monkey.org/~jose/phishing/ (CC BY 4.0)\n"
         "SpamAssassin public corpus: https://spamassassin.apache.org/old/publiccorpus/\n", encoding="utf-8")
