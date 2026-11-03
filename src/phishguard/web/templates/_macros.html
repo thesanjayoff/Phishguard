@@ -50,6 +50,7 @@
   {% endif %}
   {% if rep.imports %}<details><summary>Imports ({{ rep.imports|length }})</summary><p class="wrap">{% for i in rep.imports %}<code>{{ i }}</code> {% endfor %}</p></details>{% endif %}
   {% if rep.strings %}<details><summary>Notable strings ({{ rep.strings|length }})</summary><pre>{{ rep.strings|join('\n')|defang }}</pre></details>{% endif %}
+  {% if rep.raw_output %}<details><summary>Raw tool output</summary><pre>{{ rep.raw_output|defang }}</pre></details>{% endif %}
   {% for child in rep.children %}{{ attachment(child, depth + 1) }}{% endfor %}
 </div>
 {%- endmacro %}

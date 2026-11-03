@@ -67,6 +67,15 @@ class Finding:
     weak: bool = False  # matched on a keyword that is also an everyday word (apple, outlook, steam...)
 
 
+def _unicode_label(label: str) -> str:
+    if label.startswith("xn--"):
+        try:
+            return label.encode("ascii").decode("idna")
+        except UnicodeError:
+            return label
+    return label
+
+
 def brand_findings(p: ParsedUrl) -> tuple[Finding, ...]:
     return _brand_findings(p)
 
@@ -80,7 +89,7 @@ def _brand_findings(p: ParsedUrl) -> tuple[Finding, ...]:
     reg = p.registrable
     if k.brand_of_domain(reg):
         return ()  # official domain of some brand (e.g. mail.google.com)
-    label = reg.split(".")[0]
+    label = _unicode_label(reg.split(".")[0])  # punycode (xn--...) compared as-is would hide every homograph
     label_skel = skeleton(label)
     sub_text = p.subdomain
     out: list[Finding] = []

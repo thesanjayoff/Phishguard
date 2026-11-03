@@ -8,7 +8,8 @@ import re
 _EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})")
 _URL = re.compile(r"(https?://[^\s/?#<>\"']+)([^\s<>\"']*)", re.I)
 _PHONE = re.compile(r"(?<![\w.])(?:\+?\d[\d\s().-]{8,}\d)(?![\w.])")
-_OTP = re.compile(r"(?i)\b(otp|code|pin|cvv|password|passcode)\b([^\w\n]{0,6})(\d{3,8})\b")
+# "OTP 123456", "OTP: 123456", "OTP is 123456", "your verification code was 123456", "PIN no. 1234"
+_OTP = re.compile(r"(?i)\b(otp|code|pin|cvv|cvc|password|passcode)\b((?:[^\w\n]|\b(?:is|was|number|no|your|the)\b){0,24}?)(\d{3,8})\b")
 _LONGNUM = re.compile(r"\b\d{9,19}\b")  # card / account / aadhaar-like
 _SECRET = re.compile(r"(?i)\b(?:bearer|token|api[_-]?key|secret|password)\b\s*[:=]?\s*[A-Za-z0-9._~+/=-]{8,}")
 _LONGTOKEN = re.compile(r"\b[A-Za-z0-9_-]{32,}\b")

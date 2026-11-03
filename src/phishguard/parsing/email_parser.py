@@ -22,6 +22,23 @@ def _decode_header(v) -> str:
         return ""
 
 
+def _decoded_value(em, name: str, raw) -> str:
+    """Header text with RFC 2047 encoded-words (=?utf-8?b?...?=) decoded.
+
+    `raw_items()` hands back the undecoded text, so a display name such as =?utf-8?b?UGF5UGFs?= would
+    otherwise reach the detector as gibberish and a spoofed brand in it would go unseen."""
+    try:
+        return str(em.policy.header_fetch_parse(name, raw))
+    except Exception:
+        pass
+    try:
+        from email.header import decode_header, make_header
+
+        return str(make_header(decode_header(str(raw))))
+    except Exception:
+        return _decode_header(raw)
+
+
 def _safe_get_content(part) -> str:
     try:
         return part.get_content()
@@ -54,7 +71,7 @@ def parse_email(data: bytes | str, source: str = "paste", external_id: str | Non
     headers: dict[str, list[str]] = {}
     try:
         for k, v in em.raw_items():
-            headers.setdefault(k.lower(), []).append(re.sub(r"\s+", " ", _decode_header(v)).strip())
+            headers.setdefault(k.lower(), []).append(re.sub(r"\s+", " ", _decoded_value(em, k, v)).strip())
     except Exception:
         pass
 

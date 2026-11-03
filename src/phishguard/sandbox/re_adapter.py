@@ -146,14 +146,15 @@ class CommandAdapter(REAdapter):
         text = res.stdout.decode("utf-8", "replace").strip()
         try:
             raw = json.loads(text)
+            is_json = True
         except ValueError:
-            raw = {"warnings": ["external tool did not return JSON"], "behaviors": []}
-            raw["strings"] = text.splitlines()[:40]
-        if isinstance(raw, dict) and ("behaviors" in raw or "iocs" in raw):
+            raw, is_json = None, False
+        if is_json and isinstance(raw, dict) and ("behaviors" in raw or "iocs" in raw):
             rep = sanitize_report({**raw, "filename": filename, "size": len(data)})
         else:
-            rep = sanitize_report({"filename": filename, "size": len(data), "behaviors": [],
-                                   "warnings": ["external tool output is not in the report schema; see raw_output"]})
+            why = "external tool output is not in the report schema" if is_json else "external tool did not return JSON"
+            rep = sanitize_report({"filename": filename, "size": len(data), "behaviors": [], "warnings": [why + "; see the raw output"],
+                                   "strings": [] if is_json else text.splitlines()[:40]})
             rep["raw_output"] = text[:4000]
         rep["engine"] = "command:" + (cmd[0] if cmd else "?")
         return rep
