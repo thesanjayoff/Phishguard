@@ -23,7 +23,7 @@ Paste / share / CLI ────┘                              ├─ wording:
 | **Docker images and the container paths** (`docker/`, `phishguard/sandbox/`) | **Written but never built or run - Docker is not available where this was developed.** The host side is tested against a fake runner; the real `docker run` flags, image builds and in-container behaviour are unverified. Run `phishguard build-images` and `phishguard doctor` first, then try a sample. |
 | Gmail / Microsoft Graph / IMAP | **Tested against fakes only.** No real mailbox was connected. OAuth sign-in flows are untested. |
 | Android companion (`android/`) | **Never built or run** (no Android SDK here). The pure protocol logic has JVM unit tests that were written but not executed. Treat as a starting point. |
-| Light theme of the web UI | Not visually checked (only the dark theme was). |
+| Web UI | Both themes checked in a real browser against the running server (screenshots of inbox, report, dashboard, check page); the dashboard axis ticks were fixed after that check. |
 
 Without Docker the app still works: links and attachments are then **not opened or analysed at all** (there is deliberately
 no fallback that touches them on your computer) and the verdict says so.

@@ -53,11 +53,13 @@
     r = Math.max(0, Math.min(r, hgt / 2, w));
     return `M${x},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + hgt - r} Q${x + w},${y + hgt} ${x + w - r},${y + hgt} H${x} Z`;
   }
+  // Counts are whole numbers and the axis has 4 equal steps, so the step must be a whole number too
+  // (a step of 2.5 would label the 2.5 gridline "3").
   function niceMax(v) {
-    if (v <= 4) return 4;
-    const p = Math.pow(10, Math.floor(Math.log10(v)));
-    for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p;
-    return 10 * p;
+    const raw = Math.max(1, Math.ceil(v / 4));
+    const p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 3, 4, 5, 6, 8, 10].map((m) => m * p).find((s) => s >= raw && Number.isInteger(s)) || 10 * p;
+    return step * 4;
   }
 
   // ---- stat tiles ----
