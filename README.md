@@ -17,7 +17,7 @@ Paste / share / CLI ────┘                              ├─ wording:
 
 | Area | Status |
 |---|---|
-| Detection engine, scoring, parsing, redaction, feedback loop, web app, CLI | **Tested**: 284 automated tests pass on Windows / Python 3.12 |
+| Detection engine, scoring, parsing, redaction, feedback loop, web app, CLI | **Tested**: 286 automated tests pass on Windows / Python 3.12 |
 | Attachment analyser (`pg_re_worker`) | **Tested as a library** on harmless samples built in memory (macro doc, PE with injection imports, APK, PDF, scripts, zip bombs, path traversal). **Not tested inside its container.** |
 | Link worker (`pg_link_worker`) incl. filtering proxy | **Tested with a real browser (Edge) against local pages the tests serve themselves**: redirects, forms, login detection, screenshot, download cancel, and loopback blocking (a mutation check proved the test fails if the guard is removed). **Not tested inside its container.** |
 | **Docker images and the container paths** (`docker/`, `phishguard/sandbox/`) | **Written but never built or run - Docker is not available where this was developed.** The host side is tested against a fake runner; the real `docker run` flags, image builds and in-container behaviour are unverified. Run `phishguard build-images` and `phishguard doctor` first, then try a sample. |
@@ -157,7 +157,7 @@ mark only trusts a sender whose mail **passes authentication** - one click canno
 ## Tests, evaluation and honest numbers
 
 ```bash
-.venv/bin/pytest                                 # 284 tests; the real-browser tests skip if no Chromium-family browser is installed
+.venv/bin/pytest                                 # 286 tests; the real-browser tests skip if no Chromium-family browser is installed
 python scripts/fetch_corpora.py                  # Nazario (CC BY 4.0), SpamAssassin ham, OpenPhish feed -> data/corpora (git-ignored)
 phishguard train && phishguard eval --out reports/eval.md
 ```
