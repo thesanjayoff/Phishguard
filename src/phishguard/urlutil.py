@@ -11,6 +11,11 @@ import tldextract
 
 _tld = tldextract.TLDExtract(suffix_list_urls=(), cache_dir=None)  # bundled PSL snapshot, no network
 
+
+def _reg(ext) -> str:
+    # newer tldextract renamed registered_domain (old name warns); support both
+    return getattr(ext, "top_domain_under_public_suffix", None) or ext.registered_domain
+
 _URL_RE = re.compile(
     r"""(?ix)
     (?:\b(?:https?|ftp)://|\bwww\.)           # scheme or www.
@@ -129,7 +134,7 @@ def parse_url(url: str) -> ParsedUrl | None:
         reg, sub, suffix = ip, "", ""
     else:
         ext = _tld(host)
-        reg = ext.registered_domain or host
+        reg = _reg(ext) or host
         sub, suffix = ext.subdomain, ext.suffix
     is_idn = "xn--" in host or any(ord(c) > 127 for c in host)
     return ParsedUrl(
@@ -144,7 +149,7 @@ def registrable_domain(host_or_email: str) -> str:
     if not h:
         return ""
     ext = _tld(h)
-    return (ext.registered_domain or h).lower()
+    return (_reg(ext) or h).lower()
 
 
 def extract_urls(text: str, allow_bare: bool = True) -> list[str]:
