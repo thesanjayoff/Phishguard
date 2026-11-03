@@ -119,6 +119,10 @@ class Analyzer:
             signals += sender_signals(self.store, msg, ctx)
 
         score, label, layer_scores = combine(signals, self.cfg.thresholds.suspicious, self.cfg.thresholds.phishing, self.learned)
+        if label == "safe" and url_infos and not link_reports and all(i.get("age_days") is None and not i.get("official_brand") for i in url_infos):
+            # Static rules cannot see a brand-new site that has no lookalike features (on real phishing URLs they catch only a few percent).
+            ctx.notes.append("Not verified: only static checks ran on the link(s). Domain age, phishing feeds and the isolated browser visit "
+                             "were not available, so a newly created site without lookalike features can still look safe here.")
         signals.sort(key=lambda s: -abs(s.points))
         brands = sorted(set(hfacts.get("spoofed_brands", [])) | set(cfacts.get("spoofed_brands", []))
                         | {b for i in url_infos for b in i.get("brands", [])})

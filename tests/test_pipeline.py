@@ -424,3 +424,12 @@ def test_cli_check_reports_verdict_exit_codes_and_json(tmp_path, monkeypatch, ca
     assert d["label"] == "phishing" and d["score"] >= 70 and d["signals"] and "http://" not in json.dumps(d["urls"])
     cli.main(["check", "hello, lunch tomorrow?", "--offline", "--no-sandbox"])
     assert "SAFE" in capsys.readouterr().out.upper()
+
+
+def test_a_clean_looking_unknown_link_is_marked_unverified_not_declared_safe(analyzer):
+    v = analyzer.analyze(from_text("https://some-brand-new-site.example.org/page"), deep=True)
+    assert v.label == "safe" and any("Not verified" in n for n in v.notes)
+    official = analyzer.analyze(from_text("https://www.paypal.com/signin"), deep=True)
+    assert official.label == "safe" and not any("Not verified" in n for n in official.notes)
+    bad = analyzer.analyze(from_text("http://paypa1-secure-login.top/signin"), deep=True)
+    assert bad.label != "safe" and not any("Not verified" in n for n in bad.notes)

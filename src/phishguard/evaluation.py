@@ -54,6 +54,30 @@ def _fmt(m: dict) -> str:
             f"FP {m['fp']}/{m['fp'] + m['tn']} ({m['fpr'] * 100:.2f}%)  FN {m['fn']}/{m['tp'] + m['fn']}   [TP {m['tp']} FP {m['fp']} FN {m['fn']} TN {m['tn']}]")
 
 
+def _url_only_set(corpora: Path, ham_test: list[Message]) -> list[tuple[Message, int, str]]:
+    """Bare URLs as a user would paste them. Phishing: the OpenPhish public feed if it was downloaded
+    (data/corpora/feeds/openphish.txt). Legitimate: links found in held-out legitimate mail, at most 2 per site."""
+    from .parsing.email_parser import from_text
+    from .urlutil import parse_url
+
+    feed = corpora / "feeds" / "openphish.txt"
+    if not feed.is_file():
+        return []
+    phish = [ln.strip() for ln in feed.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip().lower().startswith(("http://", "https://"))]
+    seen_sites: dict[str, int] = {}
+    benign: list[str] = []
+    for m in ham_test:
+        for u in m.urls[:4]:
+            p = parse_url(u.url)
+            if not p or not p.explicit_scheme or p.scheme not in ("http", "https"):
+                continue
+            if seen_sites.get(p.registrable, 0) >= 2 or u.url in benign:
+                continue
+            seen_sites[p.registrable] = seen_sites.get(p.registrable, 0) + 1
+            benign.append(u.url)
+    return [(from_text(u, kind="url"), 1, "openphish") for u in phish] + [(from_text(u, kind="url"), 0, "ham-link") for u in benign[:1000]]
+
+
 def run_eval(cfg: Config, corpora: Path, out: Path | None = None, limit: int = 0) -> str:
     tmp = Path(tempfile.mkdtemp(prefix="pgeval-"))
     store = Store(tmp / "eval.db")
@@ -76,6 +100,10 @@ def run_eval(cfg: Config, corpora: Path, out: Path | None = None, limit: int = 0
         if limit:
             p_te, h_te = p_te[:limit], h_te[:limit]
         sets["real corpora: Nazario phishing vs SpamAssassin ham"] = [(m, 1, "nazario") for m in p_te] + [(m, 0, "spamassassin") for m in h_te]
+        url_set = _url_only_set(corpora, h_te)
+        if url_set:
+            n_p = sum(1 for _, l, _ in url_set if l)
+            sets[f"URL only: OpenPhish community feed ({n_p} live phishing URLs, never used for tuning) vs links found in legitimate mail"] = url_set
     synth = generate(n_per_family=10, variants=(1,), seed=4242)  # held-out wording, new random slots
     sets["synthetic held-out wording (GoPhish-style email, India SMS/chat scams, hard-negative legit mail)"] = [(s.msg, s.label, s.family) for s in synth]
     sets["synthetic India SMS/chat only"] = [(s.msg, s.label, s.family) for s in synth if s.channel in ("sms", "chat")]
