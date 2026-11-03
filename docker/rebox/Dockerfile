@@ -18,13 +18,13 @@ RUN pip install \
       capstone==5.0.9 \
       olefile==0.47 \
       msoffcrypto-tool==6.0.0 \
-    && pip uninstall -y pip setuptools wheel 2>/dev/null || true
+    && (pip uninstall -y pip setuptools wheel 2>/dev/null || true)
 
 WORKDIR /app
 COPY src/pg_re_worker /app/pg_re_worker
 
 # Nothing in the image is writable by the runtime user.
-RUN chmod -R a-w /app && useradd --uid 65532 --no-create-home --shell /usr/sbin/nologin worker
+RUN chmod -R a+rX,a-w /app && useradd --uid 65532 --no-create-home --shell /usr/sbin/nologin worker
 USER 65532:65532
 
 # The host adapter runs:  docker run ... phishguard-rebox:latest python -m pg_re_worker

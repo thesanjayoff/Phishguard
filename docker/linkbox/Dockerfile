@@ -22,7 +22,7 @@ RUN pip install playwright==1.64.1 \
 
 WORKDIR /app
 COPY src/pg_link_worker /app/pg_link_worker
-RUN chmod -R a-w /app && useradd --uid 65532 --no-create-home --shell /usr/sbin/nologin worker
+RUN chmod -R a+rX,a-w /app && useradd --uid 65532 --no-create-home --shell /usr/sbin/nologin worker
 USER 65532:65532
 
 # Modes: `expand` (redirect headers only) and `browse` (full headless visit). JSON in on stdin, JSON out on stdout.

@@ -433,3 +433,23 @@ def test_a_clean_looking_unknown_link_is_marked_unverified_not_declared_safe(ana
     assert official.label == "safe" and not any("Not verified" in n for n in official.notes)
     bad = analyzer.analyze(from_text("http://paypa1-secure-login.top/signin"), deep=True)
     assert bad.label != "safe" and not any("Not verified" in n for n in bad.notes)
+
+
+# ------------------------------------------------------------------ Dockerfiles (cannot be built here, so at least lint the contract)
+def _dockerfile(name: str) -> str:
+    return (ROOT / "docker" / name / "Dockerfile").read_text(encoding="utf-8")
+
+
+def test_dockerfiles_run_as_unprivileged_user_and_do_not_hide_failures():
+    for name in ("rebox", "linkbox"):
+        text = _dockerfile(name)
+        assert re.search(r"(?m)^USER 65532:65532$", text), name                    # matches the --user flag the host passes
+        assert "|| true" not in re.sub(r"\(\s*pip uninstall[^)]*\)", "", text), name  # a failed install must fail the build
+        assert "--privileged" not in text and "EXPOSE" not in text
+    assert "pg_re_worker" in _dockerfile("rebox") and "pg_link_worker" in _dockerfile("linkbox")
+
+
+def test_image_entrypoints_match_what_the_host_runs(cfg):
+    assert 'CMD ["python", "-m", "pg_re_worker"]' in _dockerfile("rebox")                  # BuiltinContainerAdapter passes the same command
+    assert 'ENTRYPOINT ["python", "-m", "pg_link_worker"]' in _dockerfile("linkbox")       # LinkSandbox passes just "browse"/"expand"
+    assert cfg.sandbox.link_image == "phishguard-linkbox:latest" and cfg.sandbox.re_image == "phishguard-rebox:latest"
