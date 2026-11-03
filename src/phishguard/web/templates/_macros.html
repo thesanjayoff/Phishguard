@@ -18,7 +18,7 @@
     <dt>Size</dt><dd>{{ rep.size }} bytes</dd>
     {% if rep.sha256 %}<dt>SHA-256</dt><dd><code>{{ rep.sha256 }}</code></dd>{% endif %}
     {% if rep.md5 %}<dt>MD5</dt><dd><code>{{ rep.md5 }}</code></dd>{% endif %}
-    {% if rep.entropy is not none %}<dt>Entropy</dt><dd>{{ '%.2f'|format(rep.entropy) }} / 8{% if rep.packed %} &ndash; looks packed or encrypted{% endif %}</dd>{% endif %}
+    {% if rep.entropy is defined and rep.entropy is not none %}<dt>Entropy</dt><dd>{{ '%.2f'|format(rep.entropy) }} / 8{% if rep.packed %} &ndash; looks packed or encrypted{% endif %}</dd>{% endif %}
   </dl>
   {% for w in rep.warnings %}<p class="note">{{ w }}</p>{% endfor %}
   {% for e in rep.errors %}<p class="note warn">{{ e }}</p>{% endfor %}

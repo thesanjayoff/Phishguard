@@ -170,3 +170,57 @@ def test_non_loopback_requires_login(cfg, analyzer):
     ok = c.post("/login", data={"token": cfg.api_token()})
     assert ok.status_code == 303 and "pg_session" in ok.headers["set-cookie"] and "httponly" in ok.headers["set-cookie"].lower()
     assert c.get("/api/messages", headers={"X-PG-CSRF": app.state.csrf}).status_code == 200
+
+
+# ------------------------------------------------------------------ attachment reports in the UI
+def _mail_with_attachment(name: str, data: bytes) -> str:
+    from email.message import EmailMessage
+
+    m = EmailMessage()
+    m["From"] = "Accounts <billing@example.net>"
+    m["To"] = "me@example.com"
+    m["Subject"] = "Invoice attached"
+    m["Message-ID"] = "<att1@example.net>"
+    m.set_content("Hello, please find the invoice attached.")
+    m.add_attachment(data, maintype="application", subtype="octet-stream", filename=name)
+    return m.as_string()
+
+
+class _LibraryAdapter:
+    """Test stand-in for the container adapter: runs the worker as a library on harmless in-memory samples only."""
+
+    def analyze(self, filename, data, passwords=()):
+        from pg_re_worker.analyze import analyze_bytes
+        from pg_re_worker.core import Budget
+        from phishguard.sandbox.re_adapter import sanitize_report
+
+        return sanitize_report(analyze_bytes(filename, data, list(passwords), 0, Budget()))
+
+
+def test_attachment_without_container_still_renders(client):
+    """Host fallback report has no entropy/children keys; the page must not crash on them."""
+    import fixtures as F
+
+    eml = _mail_with_attachment("invoice.docm", F.build_docx(vba_modules={"Module1": F.INERT_VBA}))
+    r = client.post("/api/check", json={"text": eml, "kind": "email", "deep": True}, headers=ui(client))
+    assert r.status_code == 200, r.text
+    page = client.get(f"/message/{r.json()['message_id']}")
+    assert page.status_code == 200
+    assert "invoice.docm" in page.text and "content not analysed" in page.text
+
+
+def test_attachment_report_renders_behaviours_snippets_and_defanged_iocs(cfg, analyzer):
+    import fixtures as F
+
+    analyzer.re_adapter = _LibraryAdapter()
+    app = create_app(cfg, analyzer=analyzer, start_poller=False)
+    c = TestClient(app, base_url="http://127.0.0.1:8765")
+    eml = _mail_with_attachment("invoice.docm", F.build_docx(vba_modules={"Module1": F.INERT_VBA}))
+    r = c.post("/api/check", json={"text": eml, "kind": "email", "deep": True}, headers={"X-PG-CSRF": app.state.csrf})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["score"] >= 35 and d["label"] in ("suspicious", "phishing")  # a macro doc that downloads+executes must not look safe
+    page = c.get(f"/message/{d['message_id']}").text
+    assert "Behaviours found" in page and "URLDownloadToFileA" in page          # the code behind the flag is shown
+    assert "Entropy" in page and "Indicators of compromise" in page
+    assert "http://example.invalid" not in page and "hxxp://example[.]invalid" in page  # IOCs are defanged
