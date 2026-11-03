@@ -53,7 +53,7 @@ class Scanner:
         return res
 
     def _quarantine(self, mid: int, msg: Message) -> tuple[bool, str]:
-        note = "flagged locally (see Quarantine view)"
+        note = "flagged locally (see the Quarantined filter in the inbox)"
         src = self.sources.get(msg.source)
         if src is not None and msg.external_id and hasattr(src, "quarantine"):
             try:

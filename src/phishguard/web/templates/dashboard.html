@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Dashboard &middot; PhishGuard{% endblock %}
+{% block body %}
+<h1>Dashboard</h1>
+<div class="filters" role="group" aria-label="Date range" id="range">
+  <button type="button" class="chip" data-days="7">Last 7 days</button>
+  <button type="button" class="chip on" data-days="30" aria-pressed="true">Last 30 days</button>
+  <button type="button" class="chip" data-days="90">Last 90 days</button>
+</div>
+
+<div id="dash" class="dash">
+  <div id="tiles" class="tiles" aria-label="Totals"></div>
+
+  <section class="card" id="trend-card">
+    <div class="card-head">
+      <h2>Messages scanned per day</h2>
+      <button type="button" class="ghost small" id="trend-toggle" aria-pressed="false">Show table</button>
+    </div>
+    <div class="legend" id="trend-legend" aria-label="Legend"></div>
+    <div class="chart" id="trend"></div>
+    <div id="trend-table" hidden></div>
+  </section>
+
+  <div class="cols">
+    <section class="card">
+      <div class="card-head"><h2>Most spoofed brands</h2><button type="button" class="ghost small" data-table="brands" aria-pressed="false">Show table</button></div>
+      <p class="muted small">Brands that flagged messages pretended to be.</p>
+      <div class="chart" id="brands"></div><div id="brands-table" hidden></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Top malicious domains</h2><button type="button" class="ghost small" data-table="domains" aria-pressed="false">Show table</button></div>
+      <p class="muted small">Shown defanged. Counts are flagged messages that used the domain.</p>
+      <div class="chart" id="domains"></div><div id="domains-table" hidden></div>
+    </section>
+  </div>
+</div>
+<div id="tip" class="tip" role="tooltip" hidden></div>
+{% endblock %}
+{% block scripts %}<script src="/static/dashboard.js" defer></script>{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Sign in &middot; PhishGuard{% endblock %}
+{% block body %}
+<h1>Sign in</h1>
+<p>This server is listening on a network address, so it needs the access token from <code>data/token</code> on the machine it runs on.</p>
+<form method="post" action="/login" class="stack narrow">
+  {% if error %}<p class="note warn">{{ error }}</p>{% endif %}
+  <label for="token">Access token</label>
+  <input id="token" name="token" type="password" autocomplete="current-password" required>
+  <div><button class="btn primary" type="submit">Sign in</button></div>
+</form>
+{% endblock %}

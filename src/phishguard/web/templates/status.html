@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Status &middot; PhishGuard{% endblock %}
+{% block body %}
+<h1>Status &amp; privacy</h1>
+{% macro ok(flag) %}<span class="pill {{ 'on' if flag else 'off' }}">{{ 'ready' if flag else 'not available' }}</span>{% endmacro %}
+<div class="cols">
+<section>
+  <h2>Detection</h2>
+  <dl class="facts">
+    <dt>Thresholds</dt><dd>suspicious &ge; {{ s.thresholds.suspicious }}, phishing &ge; {{ s.thresholds.phishing }}</dd>
+    <dt>Text classifier</dt><dd>{{ ok(s.classifier) }}{% if not s.classifier %} <span class="muted small">run <code>phishguard train</code></span>{% endif %}</dd>
+    <dt>Learned from your feedback</dt><dd>{{ s.learned_weights }} signal weight(s) adjusted</dd>
+    <dt>Link sandbox (Docker)</dt><dd>{{ ok(s.link_sandbox.ready) }} <span class="muted small">{{ s.link_sandbox.reason }}</span></dd>
+    <dt>Attachment sandbox</dt><dd>{{ ok(s.attachment_sandbox.ready) }} <span class="muted small">{{ s.attachment_sandbox.reason }}{% if s.attachment_engine %} &middot; adapter: {{ s.attachment_engine }}{% endif %}</span></dd>
+    <dt>Blocklists</dt><dd>{% for f in s.feeds %}{{ f.source }}: {{ f.count }} URLs &middot; {% else %}<span class="muted">not downloaded &mdash; run <code>phishguard feeds update</code></span>{% endfor %}</dd>
+  </dl>
+</section>
+<section>
+  <h2>Sources</h2>
+  <dl class="facts">
+    {% for name, on in s.sources.items() %}<dt>{{ name }}</dt><dd><span class="pill {{ 'on' if on else 'off' }}">{{ 'enabled' if on else 'off' }}</span>
+      {% if s.quarantine_remote[name] is defined %} <span class="muted small">{{ 'labels/moves flagged mail' if s.quarantine_remote[name] else 'read-only: never changes your mailbox' }}</span>{% endif %}</dd>{% endfor %}
+  </dl>
+  <h2>Privacy</h2>
+  <dl class="facts">
+    <dt>Message bodies leave this machine</dt><dd><span class="pill {{ 'warn' if s.privacy.llm_active else 'on' }}">{{ 'yes — LLM review is on' if s.privacy.llm_active else 'no' }}</span></dd>
+    <dt>Domain-age lookups (domain names only)</dt><dd>{{ 'on' if s.privacy.rdap_lookups else 'off' }}</dd>
+    <dt>Google Safe Browsing (sends link URLs)</dt><dd>{{ 'on' if s.privacy.safe_browsing else 'off' }}</dd>
+    <dt>Stores a redacted preview</dt><dd>{{ 'yes' if s.privacy.store_snippet else 'no' }}</dd>
+    <dt>Listening on</dt><dd>{{ s.bind }} {% if s.loopback_only %}<span class="pill on">this computer only</span>{% else %}<span class="pill warn">reachable on your network &mdash; token required</span>{% endif %}</dd>
+  </dl>
+</section>
+</div>
+{% endblock %}

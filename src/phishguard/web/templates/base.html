@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="pg-csrf" content="{{ csrf }}">
+<title>{% block title %}PhishGuard{% endblock %}</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">PhishGuard</a>
+  <nav aria-label="Main">
+    <a href="/"{% if page == 'inbox' %} aria-current="page"{% endif %}>Inbox</a>
+    <a href="/check"{% if page == 'check' %} aria-current="page"{% endif %}>Check a message</a>
+    <a href="/dashboard"{% if page == 'dashboard' %} aria-current="page"{% endif %}>Dashboard</a>
+    <a href="/status"{% if page == 'status' %} aria-current="page"{% endif %}>Status</a>
+  </nav>
+  {% if page != 'login' %}<button type="button" class="ghost" data-action="scan" title="Fetch new mail from the sources enabled in config.toml">Scan mailboxes</button>{% endif %}
+</header>
+<main>
+{% block body %}{% endblock %}
+</main>
+<footer class="foot">Links in messages are always shown defanged (hxxp, [.]). Nothing here ever deletes mail. v{{ version }}</footer>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<script src="/static/app.js" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

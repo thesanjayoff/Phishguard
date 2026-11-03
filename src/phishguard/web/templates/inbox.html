@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, scorebar %}
+{% block title %}Inbox &middot; PhishGuard{% endblock %}
+{% block body %}
+<h1>Scanned messages</h1>
+<div class="filters" role="group" aria-label="Filter by verdict">
+  {% set tabs = [('', 'All', counts.safe + counts.suspicious + counts.phishing), ('phishing', 'Phishing', counts.phishing),
+                 ('suspicious', 'Suspicious', counts.suspicious), ('safe', 'Safe', counts.safe), ('quarantined', 'Quarantined', counts.quarantined)] %}
+  {% for key, name, n in tabs %}
+  <a class="chip{% if label == key %} on{% endif %}" href="/?label={{ key }}{% if source %}&amp;source={{ source }}{% endif %}"{% if label == key %} aria-current="true"{% endif %}>{{ name }} <span class="n">{{ n }}</span></a>
+  {% endfor %}
+  {% if sources|length > 1 %}
+  <span class="sep"></span>
+  <a class="chip{% if not source %} on{% endif %}" href="/?label={{ label }}">Any source</a>
+  {% for s in sources %}<a class="chip{% if source == s %} on{% endif %}" href="/?label={{ label }}&amp;source={{ s }}">{{ s }}</a>{% endfor %}
+  {% endif %}
+</div>
+
+{% if not rows %}
+<div class="empty">
+  <p><strong>Nothing here yet.</strong></p>
+  <p>Paste a suspicious message on the <a href="/check">Check a message</a> page, run <code>phishguard scan</code> after enabling a mailbox in <code>config.toml</code>, or point the Android companion at this server.</p>
+</div>
+{% else %}
+<table class="list">
+  <thead><tr><th>Verdict</th><th class="num">Score</th><th>From</th><th>Subject / text</th><th>Why</th><th>Source</th><th>Scanned</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr class="row-{{ r.effective }}">
+    <td>{{ badge(r.effective) }}{% if r.user_label %}<div class="muted small">you marked it {{ r.user_label }}</div>{% endif %}{% if r.quarantined %}<div class="small q">quarantined</div>{% endif %}</td>
+    <td class="num">{{ r.score }}{{ scorebar(r.score, r.label) }}</td>
+    <td class="clip">{{ r.sender or '—' }}</td>
+    <td class="clip"><a href="/message/{{ r.id }}">{{ (r.subject or r.snippet or '(no subject)')|defang }}</a></td>
+    <td class="why"><div class="clamp" title="{{ (r.summary or '')|defang }}">{{ (r.summary or '')|defang }}</div></td>
+    <td>{{ r.source }}</td>
+    <td class="nowrap">{{ r.when }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<nav class="pager" aria-label="Pages">
+  {% if pg > 1 %}<a href="/?label={{ label }}&amp;source={{ source }}&amp;page={{ pg - 1 }}">&larr; Newer</a>{% endif %}
+  <span class="muted">Page {{ pg }}</span>
+  {% if has_next %}<a href="/?label={{ label }}&amp;source={{ source }}&amp;page={{ pg + 1 }}">Older &rarr;</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

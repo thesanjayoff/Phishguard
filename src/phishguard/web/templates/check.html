@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Check a message &middot; PhishGuard{% endblock %}
+{% block body %}
+<h1>Check a message</h1>
+<p>Paste anything suspicious &mdash; a raw email (with headers if you can), an SMS, a WhatsApp/Telegram message, or just a link. It is analysed on this machine; the text is not sent anywhere unless you enabled the LLM option in <code>config.toml</code>.</p>
+<form id="check-form" class="stack">
+  <label for="text">Message or link</label>
+  <textarea id="text" name="text" rows="12" required maxlength="2000000" placeholder="Paste here&hellip;"></textarea>
+  <div class="row">
+    <label>Type
+      <select id="kind" name="kind">
+        <option value="auto">Detect automatically</option><option value="email">Email (raw or plain)</option>
+        <option value="sms">SMS</option><option value="chat">Chat (WhatsApp / Telegram / other)</option><option value="url">Link only</option>
+      </select></label>
+    <label>Sender (SMS number or header, optional)<input id="sender" name="sender" maxlength="200" placeholder="e.g. VM-HDFCBK or +91&hellip;"></label>
+  </div>
+  <div class="row">
+    <label class="inline"><input type="checkbox" id="save" checked> Add to my inbox</label>
+    <label class="inline"><input type="checkbox" id="deep" checked> Open links &amp; analyse attachments in the sandbox when available</label>
+  </div>
+  <div><button type="submit" class="btn primary">Check it</button> <span id="busy" class="muted" hidden>Analysing&hellip;</span></div>
+</form>
+<section id="result" hidden aria-live="polite"></section>
+{% endblock %}
+{% block scripts %}<script src="/static/check.js" defer></script>{% endblock %}

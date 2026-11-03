@@ -1,0 +1,55 @@
+{% macro badge(label) -%}
+<span class="badge v-{{ label }}"><span class="glyph" aria-hidden="true">{% if label == 'safe' %}&#10003;{% elif label == 'suspicious' %}!{% else %}&#10005;{% endif %}</span>{{ label|capitalize }}</span>
+{%- endmacro %}
+
+{% macro scorebar(score, label) -%}
+<svg class="scorebar v-{{ label }}" viewBox="0 0 100 8" role="img" aria-label="Risk score {{ score }} out of 100" preserveAspectRatio="none">
+  <rect class="track" x="0" y="0" width="100" height="8" rx="4"/>
+  <rect class="fill" x="0" y="0" width="{{ [[score, 0]|max, 100]|min }}" height="8" rx="4"/>
+</svg>
+{%- endmacro %}
+
+{% macro attachment(rep, depth=0) -%}
+<div class="att depth-{{ depth }}">
+  <h4>{{ rep.filename or 'unnamed file' }}
+    {% if rep.engine %}<span class="muted small">engine: {{ rep.engine }}</span>{% endif %}</h4>
+  <dl class="facts">
+    <dt>Type</dt><dd>{{ rep.file_type or 'unknown' }}{% if rep.type_mismatch %} <strong>(does not match its extension)</strong>{% endif %}</dd>
+    <dt>Size</dt><dd>{{ rep.size }} bytes</dd>
+    {% if rep.sha256 %}<dt>SHA-256</dt><dd><code>{{ rep.sha256 }}</code></dd>{% endif %}
+    {% if rep.md5 %}<dt>MD5</dt><dd><code>{{ rep.md5 }}</code></dd>{% endif %}
+    {% if rep.entropy is not none %}<dt>Entropy</dt><dd>{{ '%.2f'|format(rep.entropy) }} / 8{% if rep.packed %} &ndash; looks packed or encrypted{% endif %}</dd>{% endif %}
+  </dl>
+  {% for w in rep.warnings %}<p class="note">{{ w }}</p>{% endfor %}
+  {% for e in rep.errors %}<p class="note warn">{{ e }}</p>{% endfor %}
+  {% if rep.behaviors %}
+  <h5>Behaviours found</h5>
+  <ul class="behaviors">
+    {% for b in rep.behaviors %}
+    <li class="sev-{{ b.severity }}">
+      <div class="bhead"><span class="sev">{{ b.severity }}</span> <strong>{{ b.title or b.id }}</strong>
+        {% if b.location %}<span class="muted small">at {{ b.location }}</span>{% endif %}</div>
+      {% if b.detail %}<p>{{ b.detail|defang }}</p>{% endif %}
+      {% if b.snippet %}<details><summary>{{ b.snippet_kind or 'code' }} behind this flag</summary><pre>{{ b.snippet|defang }}</pre></details>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% set ioc_total = rep.iocs.values()|map('length')|sum %}
+  {% if ioc_total %}
+  <h5>Indicators of compromise</h5>
+  <dl class="facts">
+    {% for k, vals in rep.iocs.items() if vals %}
+    <dt>{{ k }}</dt><dd>{% for x in vals[:25] %}<code>{{ x|defang }}</code> {% endfor %}{% if vals|length > 25 %}<span class="muted">+{{ vals|length - 25 }} more</span>{% endif %}</dd>
+    {% endfor %}
+  </dl>
+  {% endif %}
+  {% if rep.macros %}
+  <h5>Macro code</h5>
+  {% for mc in rep.macros %}<details><summary>{{ mc.name or 'module' }}</summary><pre>{{ mc.excerpt|defang }}</pre></details>{% endfor %}
+  {% endif %}
+  {% if rep.imports %}<details><summary>Imports ({{ rep.imports|length }})</summary><p class="wrap">{% for i in rep.imports %}<code>{{ i }}</code> {% endfor %}</p></details>{% endif %}
+  {% if rep.strings %}<details><summary>Notable strings ({{ rep.strings|length }})</summary><pre>{{ rep.strings|join('\n')|defang }}</pre></details>{% endif %}
+  {% for child in rep.children %}{{ attachment(child, depth + 1) }}{% endfor %}
+</div>
+{%- endmacro %}

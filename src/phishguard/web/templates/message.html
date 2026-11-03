@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, scorebar, attachment %}
+{% block title %}Message {{ m.id }} &middot; PhishGuard{% endblock %}
+{% block body %}
+<p class="crumb"><a href="/">&larr; Inbox</a></p>
+<section class="verdict-head v-{{ m.effective }}">
+  <div class="score-block">
+    <div class="score">{{ v.score }}</div>
+    <div class="muted small">risk score (0&ndash;100)</div>
+    {{ scorebar(v.score, v.label) }}
+  </div>
+  <div class="vh-main">
+    <div>{{ badge(v.label) }}
+      {% if m.user_label %}<span class="you">You marked this <strong>{{ m.user_label }}</strong></span>{% endif %}
+      {% if m.quarantined %}<span class="you q">Quarantined &mdash; {{ m.quarantine_note }}</span>{% endif %}</div>
+    <p class="summary">{{ v.summary|defang }}</p>
+    <dl class="facts">
+      <dt>From</dt><dd>{{ m.sender or '—' }}</dd>
+      <dt>Subject</dt><dd>{{ (m.subject or '(none)')|defang }}</dd>
+      <dt>Source</dt><dd>{{ m.source }} ({{ m.kind }}) &middot; scanned {{ m.when }}</dd>
+      {% if m.snippet %}<dt>Preview</dt><dd class="wrap">{{ m.snippet|defang }}</dd>{% endif %}
+    </dl>
+    <div class="actions">
+      <button type="button" class="btn safe" data-action="feedback" data-id="{{ m.id }}" data-label="safe"{% if m.user_label == 'safe' %} aria-pressed="true"{% endif %}>Mark as safe</button>
+      <button type="button" class="btn phish" data-action="feedback" data-id="{{ m.id }}" data-label="phishing"{% if m.user_label == 'phishing' %} aria-pressed="true"{% endif %}>Mark as phishing</button>
+      {% if m.quarantined %}<button type="button" class="btn" data-action="release" data-id="{{ m.id }}">Release from quarantine</button>{% endif %}
+    </div>
+    <p class="muted small">Your feedback is stored on this machine and changes how similar signals and senders are scored in future. Nothing is ever deleted.</p>
+  </div>
+</section>
+
+{% for n in v.notes %}<p class="note">{{ n }}</p>{% endfor %}
+
+<h2>How the score was built</h2>
+<table class="layers">
+  <tbody>
+  {% for layer in layer_order if layer in v.layer_scores %}
+  <tr><th scope="row">{{ LAYER_TITLES[layer] }}</th><td class="num">{{ v.layer_scores[layer]|round|int }}</td><td>{{ scorebar(v.layer_scores[layer]|round|int, 'neutral') }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Reasons</h2>
+{% if not v.signals %}<p class="muted">Nothing unusual was found.</p>{% endif %}
+{% for layer in layer_order if layer in by_layer %}
+<h3>{{ LAYER_TITLES[layer] }}</h3>
+<ul class="reasons">
+  {% for s in by_layer[layer] %}
+  <li class="{{ 'neg' if s.points < 0 else 'pos' }}">
+    <span class="pts" title="Contribution before weighting">{{ '%+d'|format(s.points|round|int) }}</span>
+    <div><div>{{ s.reason|defang }}</div>{% if s.evidence %}<code class="ev">{{ s.evidence|defang }}</code>{% endif %}
+      <span class="muted small sid">{{ s.id }}</span></div>
+  </li>
+  {% endfor %}
+</ul>
+{% endfor %}
+
+{% if v.urls %}
+<h2>Links ({{ v.urls|length }})</h2>
+<p class="muted small">Shown defanged so they cannot be clicked by accident.</p>
+<table class="list">
+  <thead><tr><th>Link</th><th>Goes to (after expansion)</th><th>Flags</th></tr></thead>
+  <tbody>
+  {% for u in v.urls %}
+  <tr><td class="wrap"><code>{{ u.defanged }}</code>{% if u.text %}<div class="muted small">shown as: {{ u.text|defang }}</div>{% endif %}</td>
+      <td class="wrap">{% if u.defanged_final %}<code>{{ u.defanged_final }}</code>{% else %}&mdash;{% endif %}</td>
+      <td>{% for f in (u.flags + (u.final_flags or []))|unique %}<span class="tag">{{ f.replace('url.', '') }}</span> {% endfor %}
+          {% if u.age_days is defined %}<span class="tag">age {{ u.age_days|round|int }}d</span>{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if v.link_reports %}
+<h2>What the links do (opened in an isolated container)</h2>
+{% for r in v.link_reports %}
+<div class="linkrep">
+  <div><code>{{ (r.url or '')|defang }}</code> &rarr; <code>{{ (r.final_url or r.url or '')|defang }}</code>{% if r.status %} <span class="muted">HTTP {{ r.status }}</span>{% endif %}</div>
+  {% if r.error %}<p class="note warn">{{ r.error }}</p>{% endif %}
+  {% if r.title %}<div>Page title: <strong>{{ r.title|defang }}</strong></div>{% endif %}
+  <ul class="plain">
+    {% if r.has_login_form %}<li><strong>Contains a login/password form.</strong></li>{% endif %}
+    {% for f in r.forms %}<li>Form &rarr; <code>{{ f.action|defang }}</code>{% if f.has_password %} (password field){% endif %}{% if f.cross_origin %} &middot; submits to another site{% endif %}</li>{% endfor %}
+    {% if r.cert_error %}<li>TLS certificate error.</li>{% endif %}
+    {% if r.js_redirects %}<li>{{ r.js_redirects }} script redirect(s).</li>{% endif %}
+    {% if r.downloads %}<li>Tried to download: {% for d in r.downloads %}<code>{{ d }}</code> {% endfor %}</li>{% endif %}
+    {% if r.internal_target %}<li>Target was an internal/private address; the sandbox refused to connect.</li>{% endif %}
+    {% if r.third_party_domains %}<li class="muted small">Third-party hosts contacted: {{ r.third_party_domains|map('defang')|join(', ') }}</li>{% endif %}
+  </ul>
+  {% if r.redirects|length > 1 %}<details><summary>Redirect chain ({{ r.redirects|length }})</summary><ol>{% for h in r.redirects %}<li><code>{{ h.url|defang }}</code> {% if h.status %}<span class="muted">{{ h.status }}</span>{% endif %}</li>{% endfor %}</ol></details>{% endif %}
+  {% if r.screenshot %}<figure><img src="/shots/{{ r.screenshot }}" alt="Screenshot of the page (taken inside the container)" loading="lazy"><figcaption class="muted small">Screenshot taken inside the sandbox container. It is only an image.</figcaption></figure>{% endif %}
+  {% if r.text_excerpt %}<details><summary>Text on the page</summary><pre>{{ r.text_excerpt|defang }}</pre></details>{% endif %}
+</div>
+{% endfor %}
+{% endif %}
+
+{% if v.attachment_reports %}
+<h2>Attachment report</h2>
+<p class="muted small">Analysed statically inside a no-network container. Nothing was executed.</p>
+{% for rep in v.attachment_reports %}{{ attachment(rep) }}{% endfor %}
+{% endif %}
+{% endblock %}

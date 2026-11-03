@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import knowledge
 from .config import Config
 from .ctx import Ctx
 from .intel import Intel
@@ -175,4 +176,8 @@ class Analyzer:
         fd = hfacts.get("from_domain")
         if fd and any(s.id.startswith(("hdr.from_", "hdr.display_name")) for s in signals if s.points >= 40):
             bad.add(fd)
+        # Shared infrastructure is not "a malicious domain": free mailboxes, mailing-list/tracking providers, hosts, shorteners.
+        kb = knowledge.load()
+        bad = {d for d in bad if d not in kb.freemail and d not in kb.esp_domains and d not in kb.free_hosting
+               and d not in kb.shorteners and not kb.brand_of_domain(d)}
         return sorted(bad)[:12]
