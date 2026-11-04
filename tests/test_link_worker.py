@@ -259,6 +259,54 @@ def test_worker_has_no_page_interaction_code():
         assert banned not in text, banned
 
 
+class _FakePWError(Exception):
+    pass
+
+
+class _FlakyPage:
+    """Stands in for a Playwright page: raises the queued errors, then returns 'resp'."""
+
+    def __init__(self, errors):
+        self.errors, self.goto_calls, self.waits = list(errors), 0, []
+
+    def goto(self, url, wait_until, timeout):
+        self.goto_calls += 1
+        if self.errors:
+            raise _FakePWError(self.errors.pop(0))
+        return "resp"
+
+    def wait_for_timeout(self, ms):
+        self.waits.append(ms)
+
+
+def test_goto_retries_network_changed_then_succeeds():
+    from pg_link_worker.browse import _goto_with_retry
+
+    page = _FlakyPage(["Page.goto: net::ERR_NETWORK_CHANGED at https://x/"] * 2)
+    assert _goto_with_retry(page, "https://x/", 1000, _FakePWError) == "resp"
+    assert page.goto_calls == 3 and len(page.waits) == 2
+
+
+def test_goto_gives_up_after_bounded_retries():
+    from pg_link_worker.browse import NAV_RETRIES, _goto_with_retry
+
+    page = _FlakyPage(["net::ERR_NETWORK_CHANGED"] * 10)
+    with pytest.raises(_FakePWError):
+        _goto_with_retry(page, "https://x/", 1000, _FakePWError)
+    assert page.goto_calls == NAV_RETRIES + 1
+
+
+@pytest.mark.parametrize("msg", ["net::ERR_NAME_NOT_RESOLVED", "net::ERR_CERT_AUTHORITY_INVALID", "net::ERR_CONNECTION_REFUSED",
+                                 "Timeout 30000ms exceeded", "net::ERR_BLOCKED_BY_CLIENT"])
+def test_goto_does_not_retry_other_errors(msg):
+    from pg_link_worker.browse import _goto_with_retry
+
+    page = _FlakyPage([msg])
+    with pytest.raises(_FakePWError):
+        _goto_with_retry(page, "https://x/", 1000, _FakePWError)
+    assert page.goto_calls == 1 and page.waits == []
+
+
 # ------------------------------------------------------------------ real browser against local pages only
 @pytest.fixture(scope="module")
 def browser_kwargs():

@@ -102,6 +102,23 @@ def check_host(url: str) -> str:
         return ""
 
 
+TRANSIENT_NET_ERRORS = ("ERR_NETWORK_CHANGED",)
+NAV_RETRIES = 2  # extra attempts, only for errors that say nothing about the URL itself
+
+
+def _goto_with_retry(page, url: str, timeout_ms: float, PWError, sleep_ms: int = 400):
+    """page.goto, retried a bounded number of times when Chromium reports that the container's network
+    interfaces changed mid-request (seen right after a container starts). Any other error is raised at once."""
+    for attempt in range(NAV_RETRIES + 1):
+        try:
+            return page.goto(url, wait_until="load", timeout=timeout_ms)
+        except PWError as e:
+            if attempt < NAV_RETRIES and any(t in str(e) for t in TRANSIENT_NET_ERRORS):
+                page.wait_for_timeout(sleep_ms)
+                continue
+            raise
+
+
 def _visit(browser, url: str, timeout_s: int, want_shot: bool, ignore_tls: bool, out: dict, PWError) -> str:
     ctx = browser.new_context(
         ignore_https_errors=ignore_tls, accept_downloads=False, java_script_enabled=True, service_workers="block",
@@ -118,7 +135,7 @@ def _visit(browser, url: str, timeout_s: int, want_shot: bool, ignore_tls: bool,
         page.on("framenavigated", lambda f: nav.__setitem__("count", nav["count"] + 1) if f == page.main_frame else None)
         resp = None
         try:
-            resp = page.goto(url, wait_until="load", timeout=max(5, timeout_s * 0.6) * 1000)
+            resp = _goto_with_retry(page, url, max(5, timeout_s * 0.6) * 1000, PWError)
         except PWError as e:
             msg = str(e)
             if _is_cert_error(msg) and not ignore_tls:
