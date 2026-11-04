@@ -34,7 +34,7 @@ rdap = true                  # needs external_domain_lookups = true as well
 
 [sandbox]                    # isolated Docker containers: the ONLY place links are opened
 enabled = true
-docker_bin = "docker"
+docker_bin = "docker"        # or "podman" (WSL2 + Podman uses far less idle memory on Windows; see the README)
 link_image = "phishguard-linkbox:latest"   # build with: phishguard build-images
 re_image = "phishguard-rebox:latest"
 link_network = ""            # optional dedicated Docker network for the browser container (see README, "Network isolation")

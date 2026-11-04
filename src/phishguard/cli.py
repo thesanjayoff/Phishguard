@@ -209,8 +209,8 @@ def cmd_build_images(args, cfg: Config) -> int:
     import subprocess
 
     if shutil.which(cfg.sandbox.docker_bin) is None:
-        print(f"'{cfg.sandbox.docker_bin}' was not found on PATH. Install Docker (Docker Desktop on Windows/macOS, Docker Engine on Linux), "
-              "then run this again. Until then links and attachments are not opened or analysed at all (there is no host fallback).")
+        print(f"'{cfg.sandbox.docker_bin}' was not found on PATH. Install Docker (Docker Desktop on Windows/macOS, Docker Engine on Linux) "
+              "or Podman (set sandbox.docker_bin = \"podman\"; see the README), then run this again. Until then links and attachments are not opened or analysed at all (there is no host fallback).")
         return 1
     root = Path(__file__).resolve().parents[2]
     rc = 0

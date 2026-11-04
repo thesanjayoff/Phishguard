@@ -17,16 +17,16 @@ Paste / share / CLI ────┘                              ├─ wording:
 
 | Area | Status |
 |---|---|
-| Detection engine, scoring, parsing, redaction, feedback loop, web app, CLI | **Tested**: 286 automated tests pass on Windows / Python 3.12 |
-| Attachment analyser (`pg_re_worker`) | **Tested as a library** on harmless samples built in memory (macro doc, PE with injection imports, APK, PDF, scripts, zip bombs, path traversal). **Not tested inside its container.** |
-| Link worker (`pg_link_worker`) incl. filtering proxy | **Tested with a real browser (Edge) against local pages the tests serve themselves**: redirects, forms, login detection, screenshot, download cancel, and loopback blocking (a mutation check proved the test fails if the guard is removed). **Not tested inside its container.** |
-| **Docker images and the container paths** (`docker/`, `phishguard/sandbox/`) | **Written but never built or run - Docker is not available where this was developed.** The host side is tested against a fake runner; the real `docker run` flags, image builds and in-container behaviour are unverified. Run `phishguard build-images` and `phishguard doctor` first, then try a sample. |
+| Detection engine, scoring, parsing, redaction, feedback loop, web app, CLI | **Tested**: 293 automated tests pass on Windows / Python 3.12 |
+| Attachment analyser (`pg_re_worker`) | **Tested as a library** on harmless samples built in memory (macro doc, PE with injection imports, APK, PDF, scripts, zip bombs, path traversal), **and run inside its real container** (Podman on WSL2) on a harmless macro document, a PDF, a zip, a clean docx and a text file: the macro was extracted, the controls were clean. |
+| Link worker (`pg_link_worker`) incl. filtering proxy | **Tested with a real browser (Edge) against local pages the tests serve themselves**: redirects, forms, login detection, screenshot, download cancel, and loopback blocking (a mutation check proved the test fails if the guard is removed). **Also run inside its real container**: visits to `example.com` (the only external page tried) and refusals of loopback, the cloud-metadata IP, a LAN address and `localhost`. |
+| **Container images and flags** (`docker/`, `phishguard/sandbox/`) | **Built and run with Podman 5.8.3 on WSL2 (Windows 11)**, see *Windows: Podman on WSL2*. The enforced isolation was probed from inside the container: uid 65532, no capabilities, no-new-privileges, seccomp filter on, read-only root, no network or DNS for attachments, 512 MiB / 128 PIDs limits, no Windows drives visible. **Not tried: Docker itself** (Docker Desktop / Engine). The flags are standard and Podman accepted them, but that is not proof for Docker. **Not tried: real phishing pages** in the link container, and nothing hostile has been run through either container. |
 | Gmail / Microsoft Graph / IMAP | **Tested against fakes only.** No real mailbox was connected. OAuth sign-in flows are untested. |
 | Android companion (`android/`) | **Never built or run** (no Android SDK here). The pure protocol logic has JVM unit tests that were written but not executed. Treat as a starting point. |
 | Web UI | Both themes checked in a real browser against the running server (screenshots of inbox, report, dashboard, check page); the dashboard axis ticks were fixed after that check. |
 
-Without Docker the app still works: links and attachments are then **not opened or analysed at all** (there is deliberately
-no fallback that touches them on your computer) and the verdict says so.
+Without a container runtime (Docker or Podman) the app still works: links and attachments are then **not opened or analysed
+at all** (there is deliberately no fallback that touches them on your computer) and the verdict says so.
 
 ## Quick start
 
@@ -42,6 +42,59 @@ python -m venv .venv
 .venv/bin/phishguard doctor                   # shows what is available
 .venv/bin/phishguard serve                    # http://127.0.0.1:8765
 ```
+
+### Windows: Podman on WSL2 (low memory instead of Docker Desktop)
+
+This is the setup the containers were verified on. Run the installs in an **Administrator** PowerShell, then reboot:
+
+```powershell
+wsl --install --no-distribution
+winget install RedHat.Podman
+```
+
+1. Cap the VM in `%USERPROFILE%\.wslconfig` (on WSL the Podman VM size comes from here, not from `podman machine init`):
+   ```ini
+   [wsl2]
+   memory=3GB
+   processors=2
+   swap=0
+   [experimental]
+   autoMemoryReclaim=gradual
+   ```
+2. `podman machine init` then `podman machine start`. If the image download is cut off with "connection aborted", run it again.
+3. **Make the machine rootful:** `podman machine stop`, `podman machine set --rootful`, `podman machine start`.
+   Why: in a *rootless* machine every container failed to start with `crun: open memory.max for writing: No such file or directory`.
+   The WSL cgroup layout has no memory controller delegated to the unprivileged user (WSL's own processes sit directly in
+   `/non-systemd`, so controllers can't be enabled below it). The memory limit is a safety feature, so it was not removed.
+4. **Shrink what the VM can reach.** By default it mounts `C:\` and `D:\` read-write and can launch Windows programs. PhishGuard
+   needs neither (everything goes in over stdin, nothing is bind-mounted), so switch both off in the VM's `/etc/wsl.conf`
+   (`podman machine ssh`, then edit as root) and restart the machine:
+   ```ini
+   [user]
+   default=user
+   [automount]
+   enabled=false
+   mountFsTab=false
+   [interop]
+   enabled=false
+   appendWindowsPath=false
+   ```
+   Verified afterwards: no drvfs mounts, `/mnt/c` empty, `cmd.exe` not found inside the VM.
+5. In `config.toml`: `[sandbox]` `docker_bin = "podman"`. Then `phishguard build-images` and `phishguard doctor`.
+
+`.dockerignore` limits the build context to the two worker packages, so your mail database, corpora and `.venv` are never sent
+to the build daemon.
+
+**Memory measured** (Windows 11, 15.4 GB RAM; a coarse once-a-second sample while running 5 browser visits to `example.com` and
+5 attachment scans; not a heavy page, so treat it as a floor):
+
+| State | Used inside the VM | Notes |
+|---|---|---|
+| Idle (machine up, no containers) | about 420 MB | Windows reports the VM at about 2 GB. The gap is cache and pages Windows hasn't reclaimed yet; it did **not** shrink during this short measurement, so `autoMemoryReclaim` is unproven here |
+| During scans | peak about 640 MB | the Chromium container peaked near 190 MB (limit 1 GB). Attachment containers live about a second and were not caught by the sampling |
+| After | about 430 MB | no containers left behind |
+
+The 3 GB cap was never approached (the Windows-side figure peaked at about 2 GB). `podman machine stop` shuts the VM down when you are not scanning.
 
 ### Check something right now
 
@@ -157,7 +210,7 @@ mark only trusts a sender whose mail **passes authentication** - one click canno
 ## Tests, evaluation and honest numbers
 
 ```bash
-.venv/bin/pytest                                 # 286 tests; the real-browser tests skip if no Chromium-family browser is installed
+.venv/bin/pytest                                 # 293 tests; the real-browser tests skip if no Chromium-family browser is installed
 python scripts/fetch_corpora.py                  # Nazario (CC BY 4.0), SpamAssassin ham, OpenPhish feed -> data/corpora (git-ignored)
 phishguard train && phishguard eval --out reports/eval.md
 ```
@@ -197,7 +250,9 @@ tests/               pytest suite               reports/  latest evaluation
 - `Brand.is_official` treats `brand-label.<common TLD>` (e.g. `paypal.net`) as official; a squatter on another TLD of a real brand label will not be flagged by lookalike checks alone.
 - Static analysis only: APK bytecode is not decompiled; 7z/RAR/CAB/ISO contents are not opened by the built-in analyser (it says so); encrypted members need a password from the message text.
 - The classifier is small and trained on public corpora plus synthetic examples; teach it with the feedback buttons.
-- No mailbox, Docker image or Android build was exercised for real (see the table at the top).
+- No mailbox or Android build was exercised for real, and the containers have only been run under Podman (see the table at the top).
+- The Podman machine has to be **rootful** on WSL2 (see below): that is a weaker isolation setup than rootless, partly offset by the hardening described there.
+- Chromium occasionally reported `ERR_NETWORK_CHANGED` right after a container started (2 of 5 visits). The worker now retries that one error up to twice; 12 of 12 visits then succeeded. The root cause was not investigated further.
 
 ## Licences and attribution
 

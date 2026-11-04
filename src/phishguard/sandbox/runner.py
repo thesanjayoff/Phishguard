@@ -68,7 +68,7 @@ class DockerRunner:
         if self._avail and now - self._avail[0] < 60:
             return self._avail[1], self._avail[2]
         if shutil.which(self.bin) is None:
-            res = (False, f"'{self.bin}' not found on PATH - install Docker to enable sandboxed analysis")
+            res = (False, f"'{self.bin}' not found on PATH - install Docker (or Podman) to enable sandboxed analysis")
         else:
             try:
                 p = subprocess.run([self.bin, "version", "--format", "{{.Server.Version}}"], capture_output=True,
