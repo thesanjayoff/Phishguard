@@ -1,0 +1,7 @@
+# Allow-list build context: the images only COPY the two worker packages.
+# Everything else (mail database, phishing corpora, tokens, .venv, .git, config) must never reach the build daemon.
+*
+!src/pg_re_worker
+!src/pg_link_worker
+**/__pycache__
+**/*.pyc
