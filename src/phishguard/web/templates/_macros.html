@@ -2,6 +2,18 @@
 <span class="badge v-{{ label }}"><span class="glyph" aria-hidden="true">{% if label == 'safe' %}&#10003;{% elif label == 'suspicious' %}!{% else %}&#10005;{% endif %}</span>{{ label|capitalize }}</span>
 {%- endmacro %}
 
+{# The report's headline moment: a ring that fills to the score while the number counts up (motion.js). Final values are in the markup, so it works without JS. #}
+{% macro ring(score, label) -%}
+{% set s = [[score|round|int, 0]|max, 100]|min %}
+<div class="ring v-{{ label }}" role="img" aria-label="Risk score {{ s }} out of 100">
+  <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+    <circle class="track" cx="60" cy="60" r="52" pathLength="100"/>
+    {% if s > 0 %}<circle class="fill" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="{{ s }} 100"/>{% endif %}
+  </svg>
+  <span class="ring-num" data-countup="{{ s }}">{{ s }}</span>
+</div>
+{%- endmacro %}
+
 {% macro scorebar(score, label) -%}
 <svg class="scorebar v-{{ label }}" viewBox="0 0 100 8" role="img" aria-label="Risk score {{ score }} out of 100" preserveAspectRatio="none">
   <rect class="track" x="0" y="0" width="100" height="8" rx="4"/>

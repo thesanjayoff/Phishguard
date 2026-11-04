@@ -3,13 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
 <meta name="pg-csrf" content="{{ csrf }}">
 <title>{% block title %}PhishGuard{% endblock %}</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/static/fonts/manrope-var-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top">
-  <a class="brand" href="/">PhishGuard</a>
+  <a class="brand" href="/" aria-label="PhishGuard home">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <defs><linearGradient id="pg-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9c7830"/><stop offset="0.4" stop-color="#e4b460"/><stop offset="0.55" stop-color="#f5dfa8"/><stop offset="1" stop-color="#b4843c"/></linearGradient></defs>
+      <path d="M12 2 20 5.2V11c0 5.2-3.3 9.2-8 11C7.3 20.2 4 16.2 4 11V5.2Z" fill="url(#pg-gold)"/>
+      <path class="mark-cut" d="m8.3 12.1 2.6 2.6 4.9-5.3"/>
+    </svg>
+    PhishGuard
+  </a>
   <nav aria-label="Main">
     <a href="/"{% if page == 'inbox' %} aria-current="page"{% endif %}>Inbox</a>
     <a href="/check"{% if page == 'check' %} aria-current="page"{% endif %}>Check a message</a>
@@ -18,12 +29,13 @@
   </nav>
   {% if page != 'login' %}<button type="button" class="ghost" data-action="scan" title="Fetch new mail from the sources enabled in config.toml">Scan mailboxes</button>{% endif %}
 </header>
-<main>
+<main id="main">
 {% block body %}{% endblock %}
 </main>
 <footer class="foot">Links in messages are always shown defanged (hxxp, [.]). Nothing here ever deletes mail. v{{ version }}</footer>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script src="/static/app.js" defer></script>
+<script src="/static/motion.js" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

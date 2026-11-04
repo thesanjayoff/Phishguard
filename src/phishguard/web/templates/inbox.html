@@ -22,13 +22,13 @@
   <p>Paste a suspicious message on the <a href="/check">Check a message</a> page, run <code>phishguard scan</code> after enabling a mailbox in <code>config.toml</code>, or point the Android companion at this server.</p>
 </div>
 {% else %}
-<table class="list">
+<table class="list inbox">
   <thead><tr><th>Verdict</th><th class="num">Score</th><th>From</th><th>Subject / text</th><th>Why</th><th>Source</th><th>Scanned</th></tr></thead>
   <tbody>
   {% for r in rows %}
   <tr class="row-{{ r.effective }}">
     <td>{{ badge(r.effective) }}{% if r.user_label %}<div class="muted small">you marked it {{ r.user_label }}</div>{% endif %}{% if r.quarantined %}<div class="small q">quarantined</div>{% endif %}</td>
-    <td class="num">{{ r.score }}{{ scorebar(r.score, r.label) }}</td>
+    <td class="num"><span class="score-n">{{ r.score }}</span>{{ scorebar(r.score, r.label) }}</td>
     <td class="clip">{{ r.sender or '—' }}</td>
     <td class="clip"><a href="/message/{{ r.id }}">{{ (r.subject or r.snippet or '(no subject)')|defang }}</a></td>
     <td class="why"><div class="clamp" title="{{ (r.summary or '')|defang }}">{{ (r.summary or '')|defang }}</div></td>

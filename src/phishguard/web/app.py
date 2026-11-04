@@ -166,7 +166,7 @@ def create_app(cfg: Config, analyzer: Analyzer | None = None, start_poller: bool
         resp = await call_next(request)
         resp.headers.update({
             "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
-                                       "connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+                                       "font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
             "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY",
             "Cache-Control": "no-store", "Cross-Origin-Resource-Policy": "same-origin",
         })

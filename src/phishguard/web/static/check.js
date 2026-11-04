@@ -11,11 +11,36 @@
     return e;
   }
 
+  // Same ring as the report page (see the `ring` macro); all values are set as attributes / textContent.
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function ring(score, label) {
+    const s = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
+    const wrap = el("div", "ring v-" + label);
+    wrap.setAttribute("role", "img");
+    wrap.setAttribute("aria-label", "Risk score " + s + " out of 100");
+    const svg = document.createElementNS(SVGNS, "svg");
+    svg.setAttribute("viewBox", "0 0 120 120");
+    svg.setAttribute("aria-hidden", "true");
+    const circle = (cls, extra) => {
+      const c = document.createElementNS(SVGNS, "circle");
+      c.setAttribute("class", cls);
+      [["cx", "60"], ["cy", "60"], ["r", "52"], ["pathLength", "100"]].forEach(([k, v]) => c.setAttribute(k, v));
+      for (const k in extra || {}) c.setAttribute(k, extra[k]);
+      return c;
+    };
+    svg.append(circle("track"));
+    if (s > 0) svg.append(circle("fill", { "stroke-dasharray": s + " 100" }));
+    const num = el("span", "ring-num", String(s));
+    num.dataset.countup = String(s);
+    wrap.append(svg, num);
+    return wrap;
+  }
+
   function render(r) {
     out.replaceChildren();
     const head = el("div", "verdict-head v-" + r.label);
     const sb = el("div", "score-block");
-    sb.append(el("div", "score", String(r.score)), el("div", "muted small", "risk score (0-100)"));
+    sb.append(ring(r.score, r.label), el("div", "muted small", "risk score, 0-100"));
     const main = el("div", "vh-main");
     const badge = el("span", "badge v-" + r.label);
     badge.append(el("span", "glyph", r.label === "safe" ? "✓" : r.label === "suspicious" ? "!" : "✕"), document.createTextNode(r.label[0].toUpperCase() + r.label.slice(1)));
@@ -44,7 +69,8 @@
     });
     out.append(ul);
     out.hidden = false;
-    out.scrollIntoView({ behavior: "smooth", block: "start" });
+    out.querySelectorAll("[data-countup]").forEach((n) => window.PG.countUp && window.PG.countUp(n));
+    out.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
   }
 
   form.addEventListener("submit", async (ev) => {

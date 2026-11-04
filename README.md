@@ -114,6 +114,14 @@ text, link or a raw email), a per-message report (reasons per layer, defanged li
 reports) with **Mark as safe / Mark as phishing** buttons, and a dashboard (trends, top spoofed brands, top malicious
 domains). Each button press changes future scoring - see *Learning from your feedback*.
 
+**Look and feel.** Dark with a warm gold accent by default, and a light "champagne paper" theme that follows your OS
+setting. Server-rendered Jinja + plain CSS/JS, no framework and no build step. Everything is self-hosted: the page makes no
+request to any other origin (checked in the browser). The verdict colours (green / orange / red) are always paired with an
+icon and a word, so colour is never the only signal. Animations (the score ring, the dashboard bars, page transitions) run only
+when your OS has not asked for reduced motion. The layout has been checked, with screenshots and a script, at 1440 px, 375 px
+and 320 px wide with no sideways scrolling, and text contrast was computed for both themes. It has not been tested on a
+physical phone, in Safari or in Firefox, and I did not run a screen reader against it.
+
 Your phone, WhatsApp, Telegram etc.: forward or **share** the text to the app (the Android companion adds a share target) or paste it on the Check page. PhishGuard
 does not read chat apps and does not try to get around their APIs.
 
@@ -260,3 +268,6 @@ Original code. Evaluation data is downloaded by you and not redistributed: Nazar
 <https://monkey.org/~jose/phishing/> (**CC BY 4.0**); Apache SpamAssassin public corpus; OpenPhish community feed
 (<https://openphish.com/>, community/non-commercial terms) and PhishTank (<https://phishtank.org/>, subject to their terms).
 rspamd, SpamAssassin, phishing_catcher, GoPhish and urlscan.io were studied for *ideas* only; no code was copied.
+
+Fonts, bundled in `src/phishguard/web/static/fonts/` and served from your own machine: **Manrope** and **DM Mono**, both under the
+SIL Open Font License 1.1 (licence texts sit next to the font files).

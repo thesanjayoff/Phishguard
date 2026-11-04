@@ -1,13 +1,12 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, scorebar, attachment %}
+{% from "_macros.html" import badge, scorebar, attachment, ring %}
 {% block title %}Message {{ m.id }} &middot; PhishGuard{% endblock %}
 {% block body %}
 <p class="crumb"><a href="/">&larr; Inbox</a></p>
 <section class="verdict-head v-{{ m.effective }}">
   <div class="score-block">
-    <div class="score">{{ v.score }}</div>
-    <div class="muted small">risk score (0&ndash;100)</div>
-    {{ scorebar(v.score, v.label) }}
+    {{ ring(v.score, v.label) }}
+    <div class="muted small">risk score, 0&ndash;100</div>
   </div>
   <div class="vh-main">
     <div>{{ badge(v.label) }}
